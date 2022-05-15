@@ -10,6 +10,10 @@ import classes from './Cart.module.css'
 
 const Cart = props => {
   const [isCheckingOut, setIsCheckingOut] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [didSubmit, setDidSubmit] = useState(false)
+
+
   const cartContext = useContext(CartContext);
 
   const totalAmount = `$${cartContext.totalAmount.toFixed(2)}`;
@@ -25,6 +29,20 @@ const Cart = props => {
 
   const orderHandler = () => {
     setIsCheckingOut(true)
+  }
+
+  const submitOrderHandler = async userData => {
+    setIsSubmitting(true);
+    await fetch('https://react-cg-http-3a5c1-default-rtdb.firebaseio.com/orders.json', {
+      method: 'POST',
+      body: JSON.stringify({
+        user:userData,
+        orderedItems: cartContext.items
+      })
+    })
+    setIsSubmitting(false);
+    setDidSubmit(true);
+    cartContext.clearCart()
   }
 
   const cartItems = (
@@ -55,15 +73,36 @@ const Cart = props => {
     </div>
   )
 
-  return(
-    <Modal onClose={props.onHideCart}>
+  const cartModalContent = (
+    <>
       {cartItems}
       <div className={classes.total}>
         <span className="">Total Amount</span>
         <span className="">{totalAmount}</span>
       </div>
-      {isCheckingOut && <Checkout onClose={props.onHideCart}/>}
+      {isCheckingOut && <Checkout onSubmit={submitOrderHandler} onClose={props.onHideCart}/>}
       {!isCheckingOut && modalActions}
+    </>
+  )
+
+  const isSubmittingModalContent = <p>Sending order data...</p>
+
+  const didSubmitModalContent = (
+      <>
+        <p>Succesfully sent the order!</p>
+        <div className={classes.actions}>
+          <button className={classes.button} onClick={props.onHideCart}>
+            Close
+          </button>
+        </div>
+      </>
+  )
+
+  return(
+    <Modal onClose={props.onHideCart}>
+      {!isSubmitting && !didSubmit && cartModalContent}
+      {isSubmitting && isSubmittingModalContent}
+      {!isSubmitting && didSubmit && didSubmitModalContent}
     </Modal>
   )
 }
