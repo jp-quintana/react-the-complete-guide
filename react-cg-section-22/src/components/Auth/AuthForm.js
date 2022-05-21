@@ -1,8 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useContext } from 'react';
+import { useHistory } from 'react-router-dom'
+
+import AuthContext from '../../store/auth-context'
 
 import classes from './AuthForm.module.css';
 
 const AuthForm = () => {
+  const authContext = useContext(AuthContext)
+  const history = useHistory();
+
   const emailInputRef = useRef()
   const passwordInputRef = useRef()
 
@@ -22,40 +28,52 @@ const AuthForm = () => {
     // optional: add validation
     setIsLoading(true)
 
+    let url;
+
     if (isLogin) {
-
+      url = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyAi46qAu6NI2z6WfMp6nDUyoOcG6yblFfc'
     } else {
-      fetch(
-        'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyAi46qAu6NI2z6WfMp6nDUyoOcG6yblFfc',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            email: enteredEmail,
-            password: enteredPasword,
-            returnSecureToken: true
-          }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      ).then(res => {
-
-        setIsLoading(false)
-
-        if (res.ok) {
-
-        } else {
-          return res.json().then(data => {
-            let errorMessage = 'Authentication failed!';
-            if (data && data.error && data.error.message) {
-              errorMessage = data.error.message
-            }
-            alert(errorMessage);
-            // optional: show an error modal
-          });
-        }
-      })
+      url = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyAi46qAu6NI2z6WfMp6nDUyoOcG6yblFfc'
     }
+
+    fetch(
+      url,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          email: enteredEmail,
+          password: enteredPasword,
+          returnSecureToken: true
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    ).then(res => {
+
+      setIsLoading(false)
+
+      if (res.ok) {
+        return res.json()
+      } else {
+        return res.json().then(data => {
+          let errorMessage = 'Authentication failed!';
+          // if (data && data.error && data.error.message) {
+          //   errorMessage = data.error.message
+          // }
+          throw new Error(errorMessage)
+          // optional: show an error modal
+        });
+      }
+    }).then(data => {
+      const expirationTime = new Date(
+        new Date().getTime() + (+data.expiresIn * 1000)
+      )
+      authContext.login(data.idToken, expirationTime.toISOString)
+      history.replace('/')
+    }).catch(error => {
+      alert(error.message);
+    })
 
   }
 
